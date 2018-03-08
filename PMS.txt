@@ -1,0 +1,528 @@
+﻿****************ENTITITY LAYER******************
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Entities
+{
+    public class Product
+    {
+        public double ProductId { get; set; }//should be exactly 6 digit number...unique identifier
+        public string ProductName { get; set; }//spaces are allowed and contains only letters
+        public double UnitPrice { get; set; }//should not be less than 50
+        public int Quantity { get; set; }//should not be negative
+        public string Category { get; set; }//is either mobile/laptop
+        public DateTime MFD { get; set; }//cannot be greater than current date
+    }
+}
+
+*********************EXCEPTION LAYER****************
+
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Exceptions
+{
+    //product exception class
+    public class ProductExceptions:ApplicationException
+    {
+        //default constructor
+        public ProductExceptions():base()
+        { }
+        //parameter constructor which takes one string parameter
+        public ProductExceptions(string message):base(message)
+        { }
+        //parameterized constructor which takes two parameters
+        public ProductExceptions(string message,Exception innerException):base(message,innerException)
+        { }
+    }
+}
+
+*********************DAL*********************************
+
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Entities;
+using Exceptions;
+
+namespace DataAccessLayer
+{
+    //data accsess layer class
+    public class ProductOperations
+    {
+        //a generic list to store all the products
+        static List<Product> productList = new List<Product>();
+
+        //method to add a new product
+        //returns true if success. False if the product is not added
+        public bool AddProduct(Product pobj)
+        {
+            bool result = false;
+            try
+            {
+                productList.Add(pobj);
+                result = true;
+
+            }
+            catch (ProductExceptions)
+            {
+
+                throw;
+            }
+            return result;
+        }
+
+
+        public List<Product> DisplayProducts()
+        {
+            return productList;
+        }
+
+        public Product Search(double productId)
+        {
+            Product pobj = null;
+            foreach (Product item in productList)
+            {
+                if(item.ProductId==productId)
+                {
+                    pobj = item;
+                    break;
+                }
+
+            }
+
+
+            return pobj;
+        }
+
+
+
+        public bool DeleteProduct(int productId)
+        {
+            bool result = false;
+            Product pobj = null;
+            foreach (Product item in productList)
+            {
+                pobj = item;
+                break;
+
+            }
+            if(pobj!=null)
+            {
+                productList.Remove(pobj);
+                result = true;
+            }
+
+            return result;
+        }
+
+        public bool UpdateProduct(Product pobj)
+        {
+            bool result = false;
+            Product p = null;
+            foreach (Product item in productList)
+            {
+               if(item.ProductId==pobj.ProductId)
+                {
+                    p = item;
+                    break;
+                }
+            }
+
+            if(p!=null)
+            {
+                p.ProductId = pobj.ProductId;
+                p.ProductName = pobj.ProductName;
+                p.UnitPrice = pobj.UnitPrice;
+                p.Quantity = pobj.Quantity;
+                p.Category = pobj.Category;
+                p.MFD = pobj.MFD;
+                result = true;
+            }
+
+            return result;
+        }
+    }
+}
+
+*****************************************BLL*******************
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Entities;
+using Exceptions;
+using DataAccessLayer;
+using System.Text.RegularExpressions;
+
+namespace BusinessLayer
+{
+    public class ProductBL
+    {
+        //check for product entity for correct values
+        public bool Validation(Product pobj)
+        {
+            bool isValid = true;
+            StringBuilder sb = new StringBuilder();
+            //Regex expId = new Regex(@"^\d{6}$");
+            //Regex expName = new Regex(@"[A-Za-z\S]{3,}");
+
+            if(pobj.ProductId <=0)
+            {
+                sb.Append("ProductId cannot be negative");
+                isValid = false;
+            }
+
+            if(!Regex.IsMatch(pobj.ProductId.ToString(),"\\d{6}"))
+            {
+                sb.Append("ProductId should be exactly 6 digits");
+                isValid = false;
+            }
+
+
+            if(pobj.ProductName==string.Empty)
+            {
+                sb.Append("product name canot be empty");
+                isValid = false;
+            }
+            if(!Regex.IsMatch(pobj.ProductName,@"[A-Za-z\S]{3,}"))
+            {
+                sb.Append("product should be letters and 3 or more characters");
+                    isValid = false;
+            }
+
+
+            if(pobj.UnitPrice<=50)
+            {
+                sb.Append("unit price must be 50 or more");
+                isValid = false;
+            }
+
+            if(pobj.Quantity<0)
+            {
+                sb.Append("quantity should not be negative");
+                isValid = false;
+
+            }
+
+            if(pobj.MFD.ToShortDateString()!=DateTime.Now.ToShortDateString())
+            {
+                sb.Append("mfd must be the current date");
+                isValid = false;
+            }
+            
+            if(!(pobj.Category.ToLower()=="mobile" || pobj.Category.ToLower()=="laptop"))
+            {
+                sb.Append("category must be either mobile or laptop");
+                isValid = false;
+            }
+            if(isValid==false)
+            {
+                throw new ProductExceptions(sb.ToString());
+            }
+            return isValid;
+        }
+
+        //a method to add a new product
+        public bool AddProduct(Product pobj)
+        {
+            bool result = false;
+            //checking if the product object is valid
+            if (Validation(pobj))
+            {
+                //creating DAL class object
+                ProductOperations po = new ProductOperations();
+                //invoking its AddProduct method
+                return po.AddProduct(pobj);
+            }
+            return result;
+        }
+
+        public List<Product> DisplayProducts()
+        {
+            ProductOperations po = new ProductOperations();
+            return po.DisplayProducts();
+        }
+
+
+        public Product Search(int productId)
+        {
+            ProductOperations po = new ProductOperations();
+            return po.Search(productId);
+        }
+
+        public bool DeleteProduct(int productId)
+        {
+            ProductOperations po = new ProductOperations();
+            return po.DeleteProduct(productId);
+        }
+
+        public bool UpdateProduct(Product pobj)
+        {
+            bool result = false;
+            if(Validation(pobj))
+            {
+                ProductOperations po = new ProductOperations();
+                result=po.UpdateProduct(pobj);
+            }
+            return result;
+        }
+    }
+}
+
+************************PRESENTATION LAYER*****************
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Entities;
+using Exceptions;
+using BusinessLayer;
+
+namespace PresentationLayer
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            try
+            {
+                int choice = 0;
+                do
+                {
+                    PrintMenu();
+                    Console.WriteLine("enter ur choice");
+                    choice = int.Parse(Console.ReadLine());
+                    switch (choice)
+                    {
+                        case 1:
+                            AddProduct();
+                            break;
+                        case 2:
+                            DisplayProducts();
+                            break;
+                        case 3:
+                            Search();
+                            break;
+                        case 4:
+                            UpdateProduct();
+
+                            break;
+                        case 5:
+                            DeleteProduct();
+                            break;
+                        case 6:
+                            break;
+                        default:
+                            Console.WriteLine("invalid choice");
+                            break;
+                    }
+
+                } while (choice != 6);
+
+
+            }
+            catch (ProductExceptions ex)
+            {
+
+                Console.WriteLine(ex.Message);
+            }
+            catch(SystemException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+        static void PrintMenu()
+        {
+            Console.WriteLine("welcome to product management system.");
+            Console.WriteLine("\n1. Add product\n");
+            Console.WriteLine("2.display all products");
+            Console.WriteLine("\n3.Search product");
+            Console.WriteLine("\n4.edit product");
+            Console.WriteLine("\n5. delete product");
+            Console.WriteLine("\n6. exit");
+
+        }
+
+
+        static void AddProduct()
+        {
+            try
+            {
+                //creating object of entity class
+                Product obj = new Product();
+                //store all the product attributes
+                Console.WriteLine("enter product id");
+                obj.ProductId = Convert.ToInt32(Console.ReadLine());
+                Console.WriteLine("enter product name");
+                obj.ProductName = Console.ReadLine();
+                Console.WriteLine("enter unit price");
+                obj.UnitPrice = Convert.ToDouble(Console.ReadLine());
+                Console.WriteLine("enter quantity");
+                obj.Quantity = int.Parse(Console.ReadLine());
+                Console.WriteLine("enter category");
+                obj.Category = Console.ReadLine();
+                Console.WriteLine("enter mfd");
+                obj.MFD = DateTime.Parse(Console.ReadLine());
+
+                //creating obj of business layer class
+                ProductBL pbl = new ProductBL();
+                //invoke its addproduct method
+                bool result = pbl.AddProduct(obj);
+                if(result)
+                {
+                    Console.WriteLine("product added successfully");
+                }
+            }
+            catch(ProductExceptions ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            catch (FormatException ex)
+            {
+                Console.WriteLine(ex.Message);               
+            }
+            catch(SystemException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+
+        static void DisplayProducts()
+        {
+            try
+            {
+                ProductBL pbl = new ProductBL();
+                List<Product> list = pbl.DisplayProducts();
+                foreach (Product item in list)
+                {
+                    Console.WriteLine("productid:{0} productname:{1} unitprice:{2} quantity:{3} category:{4} mfd:{5}",
+                        item.ProductId,item.ProductName,item.UnitPrice,item.Quantity,item.Category,item.MFD);
+                    Console.WriteLine();
+                }
+
+            }
+            catch (SystemException ex)
+            {
+
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+        static void Search()
+        {
+            try
+            {
+                Console.WriteLine("enter productid");
+                int pid = int.Parse(Console.ReadLine());
+
+                ProductBL pbl = new ProductBL();
+                Product p = pbl.Search(pid);
+                if(p!=null)
+                {
+                    Console.WriteLine("productid:{0} productname:{1} unitprice:{2} quantity:{3} category:{4} mfd:{5}",
+                       p.ProductId, p.ProductName, p.UnitPrice, p.Quantity, p.Category, p.MFD);
+                    Console.WriteLine();
+                }
+                else
+                    Console.WriteLine("no product found");
+
+            }
+            catch (FormatException ex)
+            {
+
+                Console.WriteLine(ex.Message);
+            }
+            catch(SystemException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+
+        static void DeleteProduct()
+        {
+            try
+            {
+                Console.WriteLine("enter product id");
+                int pid = int.Parse(Console.ReadLine());
+
+                ProductBL pbl = new ProductBL();
+                bool result = pbl.DeleteProduct(pid);
+                if(result)
+                {
+                    Console.WriteLine(" product deleted");
+                }
+
+            }
+            catch (FormatException ex)
+            {
+
+                Console.WriteLine(ex.Message);
+            }
+            catch(SystemException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+        static void UpdateProduct()
+        {
+            try
+            { 
+            Product obj = new Product();
+            //store all the product attributes
+            Console.WriteLine("enter product id");
+            obj.ProductId = Convert.ToInt32(Console.ReadLine());
+            Console.WriteLine("enter product name");
+            obj.ProductName = Console.ReadLine();
+            Console.WriteLine("enter unit price");
+            obj.UnitPrice = Convert.ToDouble(Console.ReadLine());
+            Console.WriteLine("enter quantity");
+            obj.Quantity = int.Parse(Console.ReadLine());
+            Console.WriteLine("enter category");
+            obj.Category = Console.ReadLine();
+            Console.WriteLine("enter mfd");
+            obj.MFD = DateTime.Parse(Console.ReadLine());
+
+            //creating obj of business layer class
+            ProductBL pbl = new ProductBL();
+            //invoke its addproduct method
+            bool result = pbl.UpdateProduct(obj);
+            if (result)
+            {
+                Console.WriteLine("product updated successfully");
+            }
+        }
+            catch(ProductExceptions ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            catch (FormatException ex)
+            {
+                Console.WriteLine(ex.Message);               
+            }
+            catch(SystemException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+    }
+}
+
